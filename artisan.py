@@ -1,8 +1,28 @@
 from fastapi import FastAPI, HTTPException, Query
 from pymongo import MongoClient
 from typing import List
+from pydantic import BaseModel
 
 app = FastAPI()
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pymongo import MongoClient
+from typing import List
+
+app = FastAPI()
+
+# Configure CORS settings
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Update with your frontend URL
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
+
+# Your existing routes and database setup remain the same
+
 
 MONGO_USERNAME = "Nithya"
 MONGO_PASSWORD = "1999"
@@ -57,26 +77,38 @@ async def get_documents():
 
     return {"documents": document_list}
 
+class Artwork(BaseModel):
+    artist: str
+    art_id: int
+    art_images: str
+    price: str
+    location: str
+    title: str
+    creation_year: str
+    signed: str
+    condition: str
+    category: str
+    movement: str
 
-@app.get("/insert_document")
-async def insert_document(artist: str, art_id: int, art_images: str, price: str, location: str, title: str, creation_year: str, signed: str, condition: str, category: str, movement: str):
-    db_index = hash_name(artist)
+@app.post("/insert_document")
+async def insert_document(artwork: Artwork):
+    db_index = hash_name(artwork.artist)
     db_name = f"database_{db_index}"
     collection_name = "artworks"
     
     # Construct the document
     document = {
-        "Artist": artist,
-        "ArtID": art_id,
-        "ArtImages": art_images,
-        "Price": price,
-        "Location": location,
-        "Title": title,
-        "CreationYear": creation_year,
-        "Signed": signed,
-        "Condition": condition,
-        "Category": category,
-        "Movement": movement
+        "Artist": artwork.artist,
+        "ArtID": artwork.art_id,
+        "ArtImages": artwork.art_images,
+        "Price": artwork.price,
+        "Location": artwork.location,
+        "Title": artwork.title,
+        "CreationYear": artwork.creation_year,
+        "Signed": artwork.signed,
+        "Condition": artwork.condition,
+        "Category": artwork.category,
+        "Movement": artwork.movement
     }
     
     # Fetch the appropriate database based on the hash value
@@ -88,19 +120,26 @@ async def insert_document(artist: str, art_id: int, art_images: str, price: str,
     
     return {db_name}
 
+
+class UpdateArtworkRequest(BaseModel):
+    art_id: int
+    new_price: str
+    new_condition: str
+
+# Endpoint to update artwork
 @app.put("/update_artwork")
-async def update_artwork(art_id: int, new_price: str, new_condition: str):
+async def update_artwork(request: UpdateArtworkRequest):
     # Update the document in the "artworks" collection in database_0
     result = client[MONGO_DB]["artworks"].update_one(
-        {"ArtID": art_id},
-        {"$set": {"Price": new_price, "Condition": new_condition}}
+        {"ArtID": request.art_id},
+        {"$set": {"Price": request.new_price, "Condition": request.new_condition}}
     )
     
     # If the document was not found in database_0, try updating in database_1
     if result.matched_count == 0:
         result = client1[MONGO_DB1]["artworks"].update_one(
-            {"ArtID": art_id},
-            {"$set": {"Price": new_price, "Condition": new_condition}}
+            {"ArtID": request.art_id},
+            {"$set": {"Price": request.new_price, "Condition": request.new_condition}}
         )
     
     # Check if the update was successful
