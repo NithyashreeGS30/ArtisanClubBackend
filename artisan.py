@@ -44,6 +44,17 @@ MONGO_DB1 = "database_1"
 client1 = MongoClient(
     f"mongodb://{MONGO_USERNAME1}:{MONGO_PASSWORD1}@{MONGO_HOST1}:{MONGO_PORT1}/{MONGO_DB1}")
 
+MONGO_USERNAMEU = "Users"
+MONGO_PASSWORDU = "1999"
+MONGO_HOSTU = "localhost"
+MONGO_PORTU = 27017
+MONGO_DBU = "orders"
+ 
+# Create a MongoDB client for database_1
+clientU = MongoClient(
+    f"mongodb://{MONGO_USERNAMEU}:{MONGO_PASSWORDU}@{MONGO_HOSTU}:{MONGO_PORTU}/{MONGO_DBU}")
+dbU = clientU[MONGO_DBU]
+collection = dbU["products"]
 # Function to hash the artist name
 def hash_name(name):
     return sum(map(ord, name)) % 2
@@ -254,3 +265,19 @@ async def list_artists():
     artists.update(collection_2.distinct("Artist"))
 
     return list(artists)
+
+class ProductCreate(BaseModel):
+    quantity: int
+    product_name: str
+    price: float
+    review: str
+
+# Define route to handle insertion
+@app.post("/products/")
+async def create_product(product: ProductCreate):
+    # Convert ProductCreate instance to dictionary
+    product_dict = product.dict()
+    # Insert the data into the collection
+    result = collection.insert_one(product_dict)
+    # Return the inserted document ID
+    return {"id": str(result.inserted_id)}
